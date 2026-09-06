@@ -11,28 +11,28 @@ chrome.runtime.onInstalled.addListener(() => {
     // 1. Highlighted Text
     chrome.contextMenus.create({
       id: "peened-pin-selection",
-      title: "\uD83D\uDCCC Pin text to Peened",
+      title: "Pin text to Peened",
       contexts: ["selection"]
     });
 
     // 2. Images
     chrome.contextMenus.create({
       id: "peened-pin-image",
-      title: "\uD83D\uDCCC Pin image to Peened",
+      title: "Pin image to Peened",
       contexts: ["image"]
     });
 
     // 3. Links
     chrome.contextMenus.create({
       id: "peened-pin-link",
-      title: "\uD83D\uDCCC Pin link to Peened",
+      title: "Pin link to Peened",
       contexts: ["link"]
     });
 
     // 4. Entire Page
     chrome.contextMenus.create({
       id: "peened-pin-page",
-      title: "\uD83D\uDCCC Pin page to Peened",
+      title: "Pin page to Peened",
       contexts: ["page"]
     });
   });

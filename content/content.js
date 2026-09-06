@@ -43,12 +43,12 @@ function showPeenedToast(pin) {
     `;
   } else if (pin.type === "text") {
     bodyContent = `
-      <span style="font-size:16px;">\uD83D\uDCAC</span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#f43f5e;flex-shrink:0;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
       <span class="peened-toast-snippet">"${escapeHtml(pin.content)}"</span>
     `;
   } else {
     bodyContent = `
-      <span style="font-size:16px;">\uD83D\uDD17</span>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#f43f5e;flex-shrink:0;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
       <span class="peened-toast-snippet">${escapeHtml(pin.pageTitle || pin.content)}</span>
     `;
   }
