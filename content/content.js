@@ -14,13 +14,13 @@ document.addEventListener(
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "PEENED_SHOW_TOAST" && request.pin) {
-    showPeenedToast(request.pin);
+    showPeenedToast(request.pin, request.isDuplicate);
     sendResponse({ received: true });
   }
 });
 
 // Toast Manager
-function showPeenedToast(pin) {
+function showPeenedToast(pin, isDuplicate = false) {
   let container = document.getElementById("peened-toast-container");
   if (!container) {
     container = document.createElement("div");
@@ -55,13 +55,16 @@ function showPeenedToast(pin) {
   }
 
   const iconUrl = chrome.runtime.getURL("assets/icon-48.png");
+  const toastTitle = isDuplicate ? "Moved to Top" : "Saved to Peened";
+  const badgeText = isDuplicate ? "Already Pinned" : pin.type;
+  const badgeStyle = isDuplicate ? "background: #10B981 !important;" : "";
 
   toast.innerHTML = `
     <div class="peened-toast-header">
       <div class="peened-toast-title">
         <img src="${iconUrl}" width="16" height="16" style="border-radius:3px;vertical-align:middle;display:inline-block;" />
-        <span>Saved to Peened</span>
-        <span class="peened-toast-badge">${pin.type}</span>
+        <span>${toastTitle}</span>
+        <span class="peened-toast-badge" style="${badgeStyle}">${badgeText}</span>
       </div>
       <button class="peened-toast-close" title="Dismiss">&times;</button>
     </div>

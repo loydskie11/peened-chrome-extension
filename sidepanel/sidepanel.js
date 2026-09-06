@@ -14,6 +14,8 @@ const btnClearSearch = document.getElementById("btn-clear-search");
 const typeFilters = document.getElementById("type-filters");
 const tagCloud = document.getElementById("tag-cloud");
 const btnExport = document.getElementById("btn-export");
+const btnImport = document.getElementById("btn-import");
+const fileImportJson = document.getElementById("file-import-json");
 const btnClearAll = document.getElementById("btn-clear-all");
 const btnManualAdd = document.getElementById("btn-manual-add");
 const modalOverlay = document.getElementById("modal-overlay");
@@ -23,6 +25,13 @@ const btnSaveModal = document.getElementById("btn-save-modal");
 const manualContent = document.getElementById("manual-content");
 const manualTags = document.getElementById("manual-tags");
 const sidepanelToast = document.getElementById("sidepanel-toast");
+
+// Lightbox Elements
+const lightboxOverlay = document.getElementById("lightbox-overlay");
+const btnCloseLightbox = document.getElementById("btn-close-lightbox");
+const lightboxImg = document.getElementById("lightbox-img");
+const btnLightboxCopy = document.getElementById("btn-lightbox-copy");
+const btnLightboxSource = document.getElementById("btn-lightbox-source");
 
 // Initialize
 document.addEventListener("DOMContentLoaded", () => {
@@ -80,6 +89,18 @@ function setupEventListeners() {
 
   // Export JSON
   btnExport.addEventListener("click", exportPinsAsJson);
+
+  // Import JSON
+  btnImport.addEventListener("click", () => {
+    fileImportJson.click();
+  });
+  fileImportJson.addEventListener("change", handleImportJson);
+
+  // Lightbox Close Controls
+  btnCloseLightbox.addEventListener("click", closeLightbox);
+  lightboxOverlay.addEventListener("click", (e) => {
+    if (e.target === lightboxOverlay) closeLightbox();
+  });
 
   // Clear All Pins
   btnClearAll.addEventListener("click", () => {
@@ -216,14 +237,16 @@ function createPinCardHtml(pin) {
 
   let bodyHtml = "";
   if (pin.type === "image") {
-    const safeImgSrc = sanitizeUrl(pin.content);
+    const displayImgSrc = pin.cachedDataUrl || sanitizeUrl(pin.content);
     bodyHtml = `
       <div class="pin-image-wrapper">
         <img 
-          src="${escapeHtml(safeImgSrc)}" 
+          src="${escapeHtml(displayImgSrc)}" 
           class="pin-img" 
           alt="Pinned reference" 
           loading="lazy" 
+          draggable="true" 
+          title="Click to preview • Drag into canvas" 
           onerror="handleImageError(this, '${escapeHtml(safeSourceUrl)}')" 
         />
       </div>
@@ -255,6 +278,22 @@ function createPinCardHtml(pin) {
       ${bodyHtml}
 
       ${tagsHtml ? `<div class="pin-tags-container">${tagsHtml}</div>` : ""}
+
+      <div class="card-tag-editor" style="display:none;">
+        <div class="tag-editor-chips">
+          ${(pin.tags || [])
+            .map(
+              (tag) => `
+            <span class="tag-edit-chip">
+              <span>${escapeHtml(tag)}</span>
+              <button class="tag-delete-btn" data-tag="${escapeHtml(tag)}" title="Remove tag">&times;</button>
+            </span>
+          `
+            )
+            .join("")}
+        </div>
+        <input type="text" class="tag-editor-input" placeholder="+ add tag (Enter)" maxlength="20" />
+      </div>
 
       <footer class="pin-footer">
         <div class="action-group">
@@ -298,6 +337,20 @@ function attachCardEvents() {
     const pin = allPins.find((p) => p.id === pinId);
     if (!pin) return;
 
+    // Drag and drop & Lightbox for images
+    const imgEl = card.querySelector(".pin-img");
+    if (imgEl) {
+      imgEl.addEventListener("dragstart", (e) => {
+        e.dataTransfer.setData("text/uri-list", pin.content);
+        e.dataTransfer.setData("text/plain", pin.content);
+        e.dataTransfer.effectAllowed = "copy";
+      });
+
+      imgEl.addEventListener("click", () => {
+        openLightbox(pin.cachedDataUrl || pin.content, pin);
+      });
+    }
+
     // Copy to clipboard
     const copyBtn = card.querySelector(".btn-copy");
     if (copyBtn) {
@@ -310,29 +363,94 @@ function attachCardEvents() {
       deleteBtn.addEventListener("click", () => deletePin(pin.id));
     }
 
-    // Edit tags
+    // Inline Tag Editor toggle
     const tagBtn = card.querySelector(".btn-tag");
-    if (tagBtn) {
-      tagBtn.addEventListener("click", () => editPinTags(pin));
+    const tagEditor = card.querySelector(".card-tag-editor");
+    if (tagBtn && tagEditor) {
+      tagBtn.addEventListener("click", () => {
+        const isHidden = tagEditor.style.display === "none";
+        document.querySelectorAll(".card-tag-editor").forEach((el) => (el.style.display = "none"));
+        tagEditor.style.display = isHidden ? "flex" : "none";
+        if (isHidden) {
+          const input = tagEditor.querySelector(".tag-editor-input");
+          if (input) input.focus();
+        }
+      });
+
+      // Handle delete tag chip
+      tagEditor.querySelectorAll(".tag-delete-btn").forEach((delBtn) => {
+        delBtn.addEventListener("click", async () => {
+          const tagToRemove = delBtn.getAttribute("data-tag");
+          const updatedTags = (pin.tags || []).filter((t) => t !== tagToRemove);
+          await updatePinTagsInStorage(pin.id, updatedTags);
+        });
+      });
+
+      // Handle add tag input
+      const tagInput = tagEditor.querySelector(".tag-editor-input");
+      if (tagInput) {
+        tagInput.addEventListener("keydown", async (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            let val = tagInput.value.trim();
+            if (val) {
+              if (!val.startsWith("#")) val = "#" + val;
+              const currentTags = pin.tags || [];
+              if (!currentTags.includes(val)) {
+                await updatePinTagsInStorage(pin.id, [...currentTags, val]);
+              }
+            }
+          }
+        });
+      }
     }
   });
 }
 
-// Copy Pin Content to Clipboard
+// Update Pin Tags in Storage & UI
+async function updatePinTagsInStorage(pinId, tags) {
+  const updated = allPins.map((p) => {
+    if (p.id === pinId) {
+      return { ...p, tags };
+    }
+    return p;
+  });
+  allPins = updated;
+  await chrome.storage.local.set({ peened_pins: updated });
+  renderMoodboard();
+  showToast("Tags updated");
+}
+
+// Copy Pin Content to Clipboard (with Background CORS fallback)
 async function copyPinContent(pin) {
   try {
     if (pin.type === "image") {
-      // Try copying image blob directly to clipboard
+      const targetUrl = pin.cachedDataUrl || pin.content;
+      // 1. Try direct fetch
       try {
-        const response = await fetch(pin.content);
+        const response = await fetch(targetUrl);
+        if (!response.ok) throw new Error("Direct fetch failed");
         const blob = await response.blob();
         await navigator.clipboard.write([
-          new ClipboardItem({ [blob.type]: blob })
+          new ClipboardItem({ [blob.type || "image/png"]: blob })
         ]);
         showToast("Image copied to clipboard!");
         return;
-      } catch (err) {
-        // Fallback to copying image URL
+      } catch (directErr) {
+        // 2. Fallback to background service worker fetch to bypass CORS
+        try {
+          const res = await chrome.runtime.sendMessage({ action: "FETCH_IMAGE_DATA", url: pin.content });
+          if (res && res.success && res.dataUrl) {
+            const resBlob = await (await fetch(res.dataUrl)).blob();
+            await navigator.clipboard.write([
+              new ClipboardItem({ [resBlob.type || "image/png"]: resBlob })
+            ]);
+            showToast("Image copied to clipboard!");
+            return;
+          }
+        } catch (bgErr) {}
+
+        // 3. Fallback: Copy URL string
         await navigator.clipboard.writeText(pin.content);
         showToast("Image URL copied to clipboard!");
         return;
@@ -346,35 +464,26 @@ async function copyPinContent(pin) {
   }
 }
 
+// Open Lightbox Preview
+function openLightbox(imgSrc, pin) {
+  lightboxImg.src = imgSrc;
+  btnLightboxSource.href = sanitizeUrl(pin.sourceUrl);
+  btnLightboxCopy.onclick = () => copyPinContent(pin);
+  lightboxOverlay.style.display = "flex";
+}
+
+// Close Lightbox Preview
+function closeLightbox() {
+  lightboxOverlay.style.display = "none";
+  lightboxImg.src = "";
+}
+
 // Delete Pin
 async function deletePin(pinId) {
   const updatedPins = allPins.filter((p) => p.id !== pinId);
   await chrome.storage.local.set({ peened_pins: updatedPins });
   chrome.runtime.sendMessage({ action: "REFRESH_BADGE" });
   showToast("Pin deleted");
-}
-
-// Edit Pin Tags
-async function editPinTags(pin) {
-  const currentTags = (pin.tags || []).join(", ");
-  const newTagsStr = prompt("Enter tags (comma separated, e.g. #edit, #idea):", currentTags);
-  if (newTagsStr === null) return; // user cancelled
-
-  const tags = newTagsStr
-    .split(",")
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .map((t) => (t.startsWith("#") ? t : "#" + t));
-
-  const updatedPins = allPins.map((p) => {
-    if (p.id === pin.id) {
-      return { ...p, tags };
-    }
-    return p;
-  });
-
-  await chrome.storage.local.set({ peened_pins: updatedPins });
-  showToast("Tags updated");
 }
 
 // Save Manual Pin from Modal
@@ -438,6 +547,62 @@ function exportPinsAsJson() {
   URL.revokeObjectURL(url);
 
   showToast("Exported " + allPins.length + " pins!");
+}
+
+// Import Pins from JSON file
+async function handleImportJson(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const imported = JSON.parse(text);
+
+    if (!Array.isArray(imported)) {
+      throw new Error("Invalid format: expected an array of pins.");
+    }
+
+    const validPins = imported.filter(
+      (p) => p && typeof p === "object" && typeof p.content === "string" && typeof p.type === "string"
+    );
+
+    if (validPins.length === 0) {
+      showToast("No valid pins found in file.");
+      return;
+    }
+
+    const existingContents = new Set(allPins.map((p) => p.content.trim()));
+    const newPinsToAdd = [];
+
+    validPins.forEach((p) => {
+      if (!existingContents.has(p.content.trim())) {
+        existingContents.add(p.content.trim());
+        newPinsToAdd.push({
+          id: p.id || ("pin_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7)),
+          type: p.type || "text",
+          content: p.content,
+          sourceUrl: p.sourceUrl || "",
+          pageTitle: p.pageTitle || "Imported Pin",
+          domain: p.domain || "imported",
+          favicon: p.favicon || "",
+          createdAt: p.createdAt || new Date().toISOString(),
+          tags: Array.isArray(p.tags) ? p.tags : [],
+          cachedDataUrl: p.cachedDataUrl || null
+        });
+      }
+    });
+
+    const mergedPins = [...newPinsToAdd, ...allPins];
+    allPins = mergedPins;
+    await chrome.storage.local.set({ peened_pins: mergedPins });
+    chrome.runtime.sendMessage({ action: "REFRESH_BADGE" });
+    renderMoodboard();
+    showToast(`Imported ${newPinsToAdd.length} new pins!`);
+  } catch (err) {
+    alert("Error importing file: " + err.message);
+  } finally {
+    fileImportJson.value = "";
+  }
 }
 
 // Toast notification inside side panel
