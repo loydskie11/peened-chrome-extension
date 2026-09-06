@@ -1,0 +1,40 @@
+{
+  "manifest_version": 3,
+  "name": "Peened - Visual Swipe File & Moodboard",
+  "version": "1.0.0",
+  "description": "Instantly pin images, text snippets, and inspiration across the web without downloading or losing context.",
+  "icons": {
+    "16": "assets/icon-16.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "permissions": [
+    "contextMenus",
+    "storage",
+    "unlimitedStorage",
+    "sidePanel",
+    "activeTab"
+  ],
+  "action": {
+    "default_title": "Open Peened",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "48": "assets/icon-48.png",
+      "128": "assets/icon-128.png"
+    }
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
