@@ -37,8 +37,9 @@ function showPeenedToast(pin) {
   // Prepare Body Preview
   let bodyContent = "";
   if (pin.type === "image") {
+    const safeImgSrc = sanitizeUrl(pin.content);
     bodyContent = `
-      <img src="${escapeHtml(pin.content)}" class="peened-toast-thumb" alt="Preview" onerror="this.style.display='none'" />
+      <img src="${escapeHtml(safeImgSrc)}" class="peened-toast-thumb" alt="Preview" onerror="this.style.display='none'" />
       <span class="peened-toast-snippet">Image pinned from ${escapeHtml(pin.domain || "web")}</span>
     `;
   } else if (pin.type === "text") {
@@ -171,4 +172,18 @@ function escapeHtml(str) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function sanitizeUrl(url) {
+  if (!url) return "#";
+  const trimmed = String(url).trim();
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:" || parsed.protocol === "chrome-extension:") {
+      return trimmed;
+    }
+  } catch {
+    if (trimmed.startsWith("data:image/")) return trimmed;
+  }
+  return "#";
 }

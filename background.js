@@ -41,6 +41,11 @@ chrome.runtime.onInstalled.addListener(() => {
   updateBadgeCount();
 });
 
+// Sync badge count when browser starts up
+chrome.runtime.onStartup.addListener(() => {
+  updateBadgeCount();
+});
+
 // Helper: Format domain name
 function extractDomain(url) {
   try {
@@ -48,6 +53,15 @@ function extractDomain(url) {
   } catch {
     return "";
   }
+}
+
+// Flash Confirmation on Badge
+function flashBadgeSuccess() {
+  chrome.action.setBadgeText({ text: "+1" });
+  chrome.action.setBadgeBackgroundColor({ color: "#10B981" });
+  setTimeout(() => {
+    updateBadgeCount();
+  }, 1200);
 }
 
 // Update Extension Icon Badge Count
@@ -132,7 +146,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const updatedPins = [newPin, ...storage.peened_pins];
     await chrome.storage.local.set({ peened_pins: updatedPins });
 
-    await updateBadgeCount();
+    flashBadgeSuccess();
 
     // Send toast notification to content script in the active tab
     if (tab.id) {

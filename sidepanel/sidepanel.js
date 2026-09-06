@@ -47,17 +47,22 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 // Event Listeners Setup
 function setupEventListeners() {
-  // Search Input
+  // Search Input with 150ms debounce to optimize DOM performance
+  let searchDebounceTimer = null;
   searchInput.addEventListener("input", (e) => {
     searchQuery = e.target.value.trim().toLowerCase();
     btnClearSearch.style.display = searchQuery ? "block" : "none";
-    renderMoodboard();
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      renderMoodboard();
+    }, 150);
   });
 
   btnClearSearch.addEventListener("click", () => {
     searchInput.value = "";
     searchQuery = "";
     btnClearSearch.style.display = "none";
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
     renderMoodboard();
   });
 
@@ -206,11 +211,21 @@ function createPinCardHtml(pin) {
     .map((tag) => `<span class="card-tag">${escapeHtml(tag)}</span>`)
     .join("");
 
+  const safeSourceUrl = sanitizeUrl(pin.sourceUrl);
+  const safeFavicon = sanitizeUrl(pin.favicon);
+
   let bodyHtml = "";
   if (pin.type === "image") {
+    const safeImgSrc = sanitizeUrl(pin.content);
     bodyHtml = `
       <div class="pin-image-wrapper">
-        <img src="${escapeHtml(pin.content)}" class="pin-img" alt="Pinned reference" loading="lazy" />
+        <img 
+          src="${escapeHtml(safeImgSrc)}" 
+          class="pin-img" 
+          alt="Pinned reference" 
+          loading="lazy" 
+          onerror="handleImageError(this, '${escapeHtml(safeSourceUrl)}')" 
+        />
       </div>
     `;
   } else if (pin.type === "text") {
@@ -218,10 +233,11 @@ function createPinCardHtml(pin) {
       <div class="pin-text-body">${escapeHtml(pin.content)}</div>
     `;
   } else {
+    const safeLinkUrl = sanitizeUrl(pin.content);
     bodyHtml = `
       <div class="pin-link-body">
-        <a href="${escapeHtml(pin.sourceUrl)}" target="_blank" class="pin-link-title">${escapeHtml(pin.pageTitle || pin.content)}</a>
-        <div class="pin-link-url">${escapeHtml(pin.content)}</div>
+        <a href="${escapeHtml(safeSourceUrl)}" target="_blank" rel="noopener noreferrer" class="pin-link-title">${escapeHtml(pin.pageTitle || pin.content)}</a>
+        <div class="pin-link-url">${escapeHtml(safeLinkUrl)}</div>
       </div>
     `;
   }
@@ -229,8 +245,8 @@ function createPinCardHtml(pin) {
   return `
     <article class="pin-card" data-id="${pin.id}">
       <header class="pin-header">
-        <a href="${escapeHtml(pin.sourceUrl || "#")}" target="_blank" class="pin-source" title="${escapeHtml(pin.pageTitle || "")}">
-          ${pin.favicon ? `<img src="${escapeHtml(pin.favicon)}" class="pin-favicon" alt="" onerror="this.style.display='none'"/>` : `<svg class="pin-favicon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`}
+        <a href="${escapeHtml(safeSourceUrl)}" target="_blank" rel="noopener noreferrer" class="pin-source" title="${escapeHtml(pin.pageTitle || "")}">
+          ${safeFavicon && safeFavicon !== "#" ? `<img src="${escapeHtml(safeFavicon)}" class="pin-favicon" alt="" onerror="this.style.display='none'"/>` : `<svg class="pin-favicon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`}
           <span class="pin-domain">${escapeHtml(domain)}</span>
         </a>
         <span class="pin-time">${timeFormatted}</span>
@@ -248,7 +264,7 @@ function createPinCardHtml(pin) {
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
           </button>
-          <a href="${escapeHtml(pin.sourceUrl || "#")}" target="_blank" class="action-btn" title="Open original source">
+          <a href="${escapeHtml(safeSourceUrl)}" target="_blank" rel="noopener noreferrer" class="action-btn" title="Open original source">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
               <polyline points="15 3 21 3 21 9"></polyline>
@@ -459,3 +475,36 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// Sanitize URL schemes to prevent javascript: or malformed URI injection
+function sanitizeUrl(url) {
+  if (!url) return "#";
+  const trimmed = String(url).trim();
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:" || parsed.protocol === "chrome-extension:") {
+      return trimmed;
+    }
+  } catch {
+    if (trimmed.startsWith("data:image/")) return trimmed;
+  }
+  return "#";
+}
+
+// Global Image Error Handler for expired CDNs, 404s, or blocked hotlinks
+window.handleImageError = function (imgEl, fallbackUrl) {
+  const wrapper = imgEl.parentElement;
+  if (!wrapper) return;
+  wrapper.innerHTML = `
+    <div class="pin-image-error">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+        <polyline points="21 15 16 10 5 21"></polyline>
+        <line x1="2" y1="2" x2="22" y2="22"></line>
+      </svg>
+      <span class="error-msg">Image preview unavailable</span>
+      ${fallbackUrl && fallbackUrl !== "#" ? `<a href="${escapeHtml(fallbackUrl)}" target="_blank" rel="noopener noreferrer" class="error-link">Open original source</a>` : ""}
+    </div>
+  `;
+};
