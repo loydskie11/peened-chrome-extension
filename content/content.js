@@ -43,20 +43,22 @@ function showPeenedToast(pin) {
     `;
   } else if (pin.type === "text") {
     bodyContent = `
-      <span style="font-size:16px;">??</span>
+      <span style="font-size:16px;">\uD83D\uDCAC</span>
       <span class="peened-toast-snippet">"${escapeHtml(pin.content)}"</span>
     `;
   } else {
     bodyContent = `
-      <span style="font-size:16px;">??</span>
+      <span style="font-size:16px;">\uD83D\uDD17</span>
       <span class="peened-toast-snippet">${escapeHtml(pin.pageTitle || pin.content)}</span>
     `;
   }
 
+  const iconUrl = chrome.runtime.getURL("assets/icon-48.png");
+
   toast.innerHTML = `
     <div class="peened-toast-header">
       <div class="peened-toast-title">
-        <span>??</span>
+        <img src="${iconUrl}" width="16" height="16" style="border-radius:3px;vertical-align:middle;display:inline-block;" />
         <span>Saved to Peened</span>
         <span class="peened-toast-badge">${pin.type}</span>
       </div>

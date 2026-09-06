@@ -1,10 +1,10 @@
-# Peened ??
+# Peened
 
 > **Pin anything, anywhere.** A frictionless Chrome extension to collect images, text snippets, and creative inspiration into your personal swipe file without downloading or losing context.
 
 ---
 
-## ? Features
+## Features
 
 - **One-Click Capture**:
   - Highlight any text $\rightarrow$ Right-click $\rightarrow$ **Pin to Peened**
@@ -16,22 +16,22 @@
 
 ---
 
-## ?? Getting Started
+## Getting Started
 
 ### Installation (Developer Mode)
 
 1. Clone this repository:
-   ``bash
+   ```bash
    git clone https://github.com/loydskie11/peened-chrome-extension.git
-   ``
-2. Open Google Chrome and navigate to chrome://extensions/.
+   ```
+2. Open Google Chrome and navigate to `chrome://extensions/`.
 3. Enable **Developer mode** toggle in the top-right corner.
-4. Click **Load unpacked** and select the peened directory.
+4. Click **Load unpacked** and select the `peened` directory.
 5. Pin the **Peened** icon to your Chrome toolbar for quick access!
 
 ---
 
-## ??? Tech Stack
+## Tech Stack
 
 - **Platform**: Google Chrome Extension (Manifest V3)
 - **APIs**: Chrome Context Menus, Chrome Storage, Chrome Side Panel
@@ -39,17 +39,17 @@
 
 ---
 
-## ??? Roadmap
+## Roadmap
 
-- [ ] Initial Manifest V3 setup & context menu actions
-- [ ] Local storage engine for text & image clips
-- [ ] Side Panel & Popup moodboard interface
-- [ ] Quick tag toast on capture (#edit, #idea, #reference)
-- [ ] 1-click clipboard copy (image/text)
-- [ ] JSON backup and export
+- [x] Initial Manifest V3 setup & context menu actions
+- [x] Local storage engine for text & image clips
+- [x] Side Panel moodboard interface
+- [x] Quick tag toast on capture (`#edit`, `#idea`, `#reference`)
+- [x] 1-click clipboard copy (image/text)
+- [x] JSON backup and export
 
 ---
 
-## ?? License
+## License
 
 MIT License. See [LICENSE](LICENSE) for details.
