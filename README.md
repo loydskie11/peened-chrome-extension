@@ -1,6 +1,35 @@
 # Peened
 
-> **Pin anything, anywhere.** A frictionless, local-first Chrome extension to collect images, text snippets, and creative inspiration into a personal swipe file and moodboard right inside Chrome's Side Panel—no downloads, no accounts, zero friction.
+> **Pin anything, anywhere.** A frictionless, local-first Chrome extension to collect images, text snippets, and creative inspiration into a personal swipe file and moodboard right inside Chrome's Side Panel, with no downloads, no accounts, and zero friction.
+
+<p align="center">
+  <img src="docs/images/sidepanel-overview.png" alt="Peened Side Panel Moodboard" width="800" />
+</p>
+
+---
+
+## Visual Walkthrough
+
+### 1. Capture Without Downloading
+Highlight text or right-click any image on the web to pin it directly into your moodboard. An in-page confirmation allows you to tag references on the fly.
+
+<p align="center">
+  <img src="docs/images/context-menu.png" alt="Right-Click Context Menu and Toast" width="750" />
+</p>
+
+### 2. Search, Filter, and Organize
+Quickly locate your inspiration using debounced instant search, type filters (Images, Texts, Links), and interactive tag chips.
+
+<p align="center">
+  <img src="docs/images/search-and-tags.png" alt="Search, Tags, and Filters" width="750" />
+</p>
+
+### 3. Lightbox Preview and Drag and Drop
+Click any image to view it in full resolution, or drag images straight from your Peened Side Panel into Canva, Figma, Google Docs, or other tools.
+
+<p align="center">
+  <img src="docs/images/lightbox-preview.png" alt="Lightbox Preview and Drag and Drop" width="750" />
+</p>
 
 ---
 
